@@ -1,0 +1,38 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: secret-service
+  datasource:
+    url: jdbc:h2:mem:secretservicedb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+#  flyway:
+#    enabled: fa
+
+services:
+  project:
+    url: http://localhost:8082
+
+capyvault:
+  encryption:
+    # Development key only. Use KMS/Vault in production.
+    key-id: local-dev-key-01
+    secret-key: 0123456789abcdef0123456789abcdef
+
+logging:
+  level:
+    org.hibernate.SQL: debug

@@ -1,0 +1,248 @@
+### =========================================================
+### CapyVault Project Service API Tests
+### Base URL: http://localhost:8082
+### =========================================================
+
+@projectBaseUrl = http://localhost:8082
+@actorUuid = 0f878263-11fa-4408-a729-2c584a871e09
+
+
+### ---------------------------------------------------------
+### 1. Health check
+### ---------------------------------------------------------
+GET {{projectBaseUrl}}/actuator/health
+Accept: application/json
+
+
+### ---------------------------------------------------------
+### 2. Create project
+### ---------------------------------------------------------
+POST {{projectBaseUrl}}/api/v1/projects
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Payment API",
+  "slug": "payment-api",
+  "description": "Project for payment microservice secrets and config",
+  "actorUuid": "{{actorUuid}}"
+}
+
+> {%
+    client.test("Create project - status is 201 or 200", function () {
+        client.assert(response.status === 201 || response.status === 200, "Expected 201 or 200");
+    });
+
+    client.global.set("projectUuid", response.body.data.uuid);
+
+    client.log("Created project UUID: " + response.body.data.uuid);
+%}
+
+
+### ---------------------------------------------------------
+### 3. Get all projects
+### ---------------------------------------------------------
+GET {{projectBaseUrl}}/api/v1/projects
+Accept: application/json
+
+> {%
+    client.test("Get all projects - success", function () {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}
+
+
+### ---------------------------------------------------------
+### 4. Get project by UUID
+### ---------------------------------------------------------
+GET {{projectBaseUrl}}/api/v1/projects/{{projectUuid}}
+Accept: application/json
+
+> {%
+    client.test("Get project by UUID - success", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.data.uuid === client.global.get("projectUuid"), "Project UUID should match");
+    });
+%}
+
+
+### ---------------------------------------------------------
+### 5. Update project
+### ---------------------------------------------------------
+PUT {{projectBaseUrl}}/api/v1/projects/{{projectUuid}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Payment API Updated",
+  "slug": "payment-api",
+  "description": "Updated payment project description"
+}
+
+> {%
+    client.test("Update project - success", function () {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}
+
+
+### ---------------------------------------------------------
+### 6. Create DEV environment
+### ---------------------------------------------------------
+POST {{projectBaseUrl}}/api/v1/projects/{{projectUuid}}/environments
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Development",
+  "slug": "dev",
+  "description": "Development environment",
+  "actorUuid": "{{actorUuid}}"
+}
+
+> {%
+    client.test("Create DEV environment - success", function () {
+        client.assert(response.status === 201 || response.status === 200, "Expected 201 or 200");
+    });
+
+    client.global.set("devEnvironmentUuid", response.body.data.uuid);
+
+    client.log("Created DEV environment UUID: " + response.body.data.uuid);
+%}
+
+
+### ---------------------------------------------------------
+### 7. Create PROD environment
+### ---------------------------------------------------------
+POST {{projectBaseUrl}}/api/v1/projects/{{projectUuid}}/environments
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Production",
+  "slug": "prod",
+  "description": "Production environment",
+  "actorUuid": "{{actorUuid}}"
+}
+
+> {%
+    client.test("Create PROD environment - success", function () {
+        client.assert(response.status === 201 || response.status === 200, "Expected 201 or 200");
+    });
+
+    client.global.set("prodEnvironmentUuid", response.body.data.uuid);
+
+    client.log("Created PROD environment UUID: " + response.body.data.uuid);
+%}
+
+
+### ---------------------------------------------------------
+### 8. Get project environments
+### ---------------------------------------------------------
+GET {{projectBaseUrl}}/api/v1/projects/{{projectUuid}}/environments
+Accept: application/json
+
+> {%
+    client.test("Get project environments - success", function () {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}
+
+
+### ---------------------------------------------------------
+### 9. Get one environment
+### ---------------------------------------------------------
+GET {{projectBaseUrl}}/api/v1/projects/{{projectUuid}}/environments/{{devEnvironmentUuid}}
+Accept: application/json
+
+> {%
+    client.test("Get environment - success", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.data.uuid === client.global.get("devEnvironmentUuid"), "Environment UUID should match");
+    });
+%}
+
+
+### ---------------------------------------------------------
+### 10. Update environment
+### ---------------------------------------------------------
+PUT {{projectBaseUrl}}/api/v1/projects/{{projectUuid}}/environments/{{devEnvironmentUuid}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Development Updated",
+  "slug": "dev",
+  "description": "Updated development environment"
+}
+
+> {%
+    client.test("Update environment - success", function () {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}
+
+
+### ---------------------------------------------------------
+### 11. Internal validation API
+### This is used by secret-service.
+### ---------------------------------------------------------
+GET {{projectBaseUrl}}/internal/v1/projects/{{projectUuid}}/environments/{{prodEnvironmentUuid}}
+Accept: application/json
+
+> {%
+    client.test("Internal project environment validation - success", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.data.available === true, "Project environment should be available");
+    });
+%}
+
+
+### ---------------------------------------------------------
+### 12. Duplicate project slug test
+### Expected: 409 Conflict or 400 Bad Request depending on your handler
+### ---------------------------------------------------------
+POST {{projectBaseUrl}}/api/v1/projects
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Payment API Duplicate",
+  "slug": "payment-api",
+  "description": "Duplicate slug test",
+  "actorUuid": "{{actorUuid}}"
+}
+
+> {%
+    client.test("Duplicate project slug should fail", function () {
+        client.assert(
+            response.status === 409 || response.status === 400,
+            "Expected 409 or 400"
+        );
+    });
+%}
+
+
+### ---------------------------------------------------------
+### 13. Duplicate environment slug test
+### Expected: 409 Conflict or 400 Bad Request
+### ---------------------------------------------------------
+POST {{projectBaseUrl}}/api/v1/projects/{{projectUuid}}/environments
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Duplicate Production",
+  "slug": "prod",
+  "description": "Duplicate environment slug test",
+  "actorUuid": "{{actorUuid}}"
+}
+
+> {%
+    client.test("Duplicate environment slug should fail", function () {
+        client.assert(
+            response.status === 409 || response.status === 400,
+            "Expected 409 or 400"
+        );
+    });
+%}
