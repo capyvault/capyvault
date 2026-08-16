@@ -1,7 +1,0 @@
-package dev.capyvault.secretservice.application.query;
-
-import java.util.UUID;
-
-public record ProjectEnvironmentInfo(UUID projectUuid, String projectStatus, UUID environmentUuid,
-                                     String environmentName, String environmentSlug, String environmentStatus,
-                                     boolean available) {}
