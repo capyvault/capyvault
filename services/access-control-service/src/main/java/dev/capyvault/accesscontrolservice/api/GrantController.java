@@ -41,10 +41,16 @@ public class GrantController {
         return GrantResponse.from(
                 createGrantHandler.handle(
                         new CreateGrantCommand(
+                                request.principalId(),
+                                request.principalType(),
                                 request.projectId(),
-                                request.userId(),
                                 request.environment(),
-                                request.role()
+                                request.scopeType(),
+                                request.role(),
+                                request.effect(),
+                                request.validFrom(),
+                                request.validUntil(),
+                                request.createdBy()
                         )
                 )
         );
@@ -68,14 +74,21 @@ public class GrantController {
                         new UpdateGrantCommand(
                                 grantId,
                                 request.role(),
-                                request.status()
+                                request.effect(),
+                                request.status(),
+                                request.validFrom(),
+                                request.validUntil(),
+                                request.actorId()
                         )
                 )
         );
     }
 
     @DeleteMapping("/{grantId}")
-    public void delete(@PathVariable UUID grantId) {
-        deleteGrantHandler.handle(grantId);
+    public void delete(
+            @PathVariable UUID grantId,
+            @RequestParam UUID actorId
+    ) {
+        deleteGrantHandler.handle(grantId, actorId);
     }
 }

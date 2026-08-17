@@ -4,6 +4,7 @@ import dev.capyvault.accesscontrolservice.api.request.AccessCheckRequest;
 import dev.capyvault.accesscontrolservice.api.response.AccessCheckResponse;
 import dev.capyvault.accesscontrolservice.application.command.CheckAccessCommand;
 import dev.capyvault.accesscontrolservice.application.handler.CheckAccessHandler;
+import dev.capyvault.accesscontrolservice.domain.AccessDecision;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,15 +20,16 @@ public class AccessCheckController {
 
     @PostMapping
     public AccessCheckResponse check(@Valid @RequestBody AccessCheckRequest request) {
-        boolean allowed = checkAccessHandler.handle(
+        AccessDecision decision = checkAccessHandler.handle(
                 new CheckAccessCommand(
+                        request.principalId(),
+                        request.principalType(),
                         request.projectId(),
-                        request.userId(),
                         request.environment(),
                         request.action()
                 )
         );
 
-        return new AccessCheckResponse(allowed);
+        return AccessCheckResponse.from(decision);
     }
 }

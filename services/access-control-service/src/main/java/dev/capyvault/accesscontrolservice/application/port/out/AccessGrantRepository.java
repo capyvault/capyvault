@@ -1,33 +1,37 @@
 package dev.capyvault.accesscontrolservice.application.port.out;
 
-
 import dev.capyvault.accesscontrolservice.domain.AccessGrant;
-import org.springframework.stereotype.Repository;
+import dev.capyvault.accesscontrolservice.domain.PrincipalType;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Repository
 public interface AccessGrantRepository {
 
     AccessGrant save(AccessGrant grant);
 
     Optional<AccessGrant> findByUuid(UUID uuid);
 
-    Optional<AccessGrant> findByProjectIdAndUserIdAndEnvironment(
-            UUID projectId,
-            UUID userId,
-            String environment
-    );
-
     List<AccessGrant> findByProjectId(UUID projectId);
 
-    void deleteByUuid(UUID uuid);
+    List<AccessGrant> findByPrincipal(
+            UUID principalId,
+            PrincipalType principalType
+    );
 
-    boolean existsByProjectIdAndUserIdAndEnvironment(
+    List<AccessGrant> findCandidateGrants(
+            UUID principalId,
+            PrincipalType principalType,
+            UUID projectId
+    );
+
+    boolean existsDuplicate(
+            UUID principalId,
+            PrincipalType principalType,
             UUID projectId,
-            UUID userId,
             String environment
     );
+
+    void deleteByUuid(UUID uuid);
 }

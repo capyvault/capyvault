@@ -15,5 +15,7 @@ public enum AccessAction {
     MEMBER_READ,
     MEMBER_INVITE,
     MEMBER_UPDATE,
-    MEMBER_REMOVE
+    MEMBER_REMOVE,
+
+    AUDIT_READ
 }

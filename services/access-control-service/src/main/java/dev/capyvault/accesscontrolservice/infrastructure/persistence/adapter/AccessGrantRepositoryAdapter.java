@@ -2,6 +2,7 @@ package dev.capyvault.accesscontrolservice.infrastructure.persistence.adapter;
 
 import dev.capyvault.accesscontrolservice.application.port.out.AccessGrantRepository;
 import dev.capyvault.accesscontrolservice.domain.AccessGrant;
+import dev.capyvault.accesscontrolservice.domain.PrincipalType;
 import dev.capyvault.accesscontrolservice.infrastructure.persistence.entity.AccessGrantJpaEntity;
 import dev.capyvault.accesscontrolservice.infrastructure.persistence.mapper.AccessGrantMapper;
 import dev.capyvault.accesscontrolservice.infrastructure.persistence.repository.SpringDataAccessGrantRepository;
@@ -33,16 +34,6 @@ public class AccessGrantRepositoryAdapter implements AccessGrantRepository {
     }
 
     @Override
-    public Optional<AccessGrant> findByProjectIdAndUserIdAndEnvironment(
-            UUID projectId,
-            UUID userId,
-            String environment
-    ) {
-        return repository.findByProjectIdAndUserIdAndEnvironment(projectId, userId, environment)
-                .map(AccessGrantMapper::toDomain);
-    }
-
-    @Override
     public List<AccessGrant> findByProjectId(UUID projectId) {
         return repository.findByProjectId(projectId)
                 .stream()
@@ -51,16 +42,49 @@ public class AccessGrantRepositoryAdapter implements AccessGrantRepository {
     }
 
     @Override
-    public void deleteByUuid(UUID uuid) {
-        repository.deleteByUuid(uuid);
+    public List<AccessGrant> findByPrincipal(
+            UUID principalId,
+            PrincipalType principalType
+    ) {
+        return repository.findByPrincipalIdAndPrincipalType(principalId, principalType)
+                .stream()
+                .map(AccessGrantMapper::toDomain)
+                .toList();
     }
 
     @Override
-    public boolean existsByProjectIdAndUserIdAndEnvironment(
+    public List<AccessGrant> findCandidateGrants(
+            UUID principalId,
+            PrincipalType principalType,
+            UUID projectId
+    ) {
+        return repository.findByPrincipalIdAndPrincipalTypeAndProjectId(
+                        principalId,
+                        principalType,
+                        projectId
+                )
+                .stream()
+                .map(AccessGrantMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public boolean existsDuplicate(
+            UUID principalId,
+            PrincipalType principalType,
             UUID projectId,
-            UUID userId,
             String environment
     ) {
-        return repository.existsByProjectIdAndUserIdAndEnvironment(projectId, userId, environment);
+        return repository.existsByPrincipalIdAndPrincipalTypeAndProjectIdAndEnvironment(
+                principalId,
+                principalType,
+                projectId,
+                environment
+        );
+    }
+
+    @Override
+    public void deleteByUuid(UUID uuid) {
+        repository.deleteByUuid(uuid);
     }
 }

@@ -1,7 +1,6 @@
 package dev.capyvault.accesscontrolservice.domain;
 
 import java.util.Set;
-
 public enum GrantRole {
 
     OWNER(Set.of(
@@ -18,7 +17,9 @@ public enum GrantRole {
             AccessAction.MEMBER_READ,
             AccessAction.MEMBER_INVITE,
             AccessAction.MEMBER_UPDATE,
-            AccessAction.MEMBER_REMOVE
+            AccessAction.MEMBER_REMOVE,
+
+            AccessAction.AUDIT_READ
     )),
 
     ADMIN(Set.of(
@@ -33,12 +34,13 @@ public enum GrantRole {
 
             AccessAction.MEMBER_READ,
             AccessAction.MEMBER_INVITE,
-            AccessAction.MEMBER_UPDATE
+            AccessAction.MEMBER_UPDATE,
+
+            AccessAction.AUDIT_READ
     )),
 
     DEVELOPER(Set.of(
             AccessAction.PROJECT_READ,
-
             AccessAction.SECRET_READ,
             AccessAction.SECRET_CREATE,
             AccessAction.SECRET_UPDATE
@@ -47,6 +49,19 @@ public enum GrantRole {
     VIEWER(Set.of(
             AccessAction.PROJECT_READ,
             AccessAction.SECRET_READ
+    )),
+
+    AUDITOR(Set.of(
+            AccessAction.PROJECT_READ,
+            AccessAction.MEMBER_READ,
+            AccessAction.AUDIT_READ
+    )),
+
+    ROTATION_BOT(Set.of(
+            AccessAction.PROJECT_READ,
+            AccessAction.SECRET_READ,
+            AccessAction.SECRET_UPDATE,
+            AccessAction.SECRET_ROTATE
     ));
 
     private final Set<AccessAction> allowedActions;
