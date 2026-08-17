@@ -1,6 +1,6 @@
-package dev.capyvault.core.encryption.domain;
+package dev.capyvault.core.secret.application.port.out;
 
-public record EncryptedPayload(
+public record EncryptedSecretPayload(
         String ciphertext,
         String keyId,
         String algorithm,

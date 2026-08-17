@@ -2,6 +2,7 @@ package dev.capyvault.core.secret.domain;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -38,6 +39,10 @@ public final class Secret {
         this.versions = new ArrayList<>(Objects.requireNonNull(versions));
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
+
+        if (this.versions.isEmpty()) {
+            throw new IllegalArgumentException("Secret must have at least one version");
+        }
     }
 
     public static Secret create(
@@ -49,7 +54,11 @@ public final class Secret {
     ) {
         Instant now = Instant.now();
 
-        SecretVersion firstVersion = SecretVersion.firstVersion(encryptedValue);
+        SecretVersion firstVersion = SecretVersion.create(
+                1,
+                encryptedValue,
+                true
+        );
 
         return new Secret(
                 UUID.randomUUID(),
@@ -64,8 +73,55 @@ public final class Secret {
         );
     }
 
+    public static Secret restore(
+            UUID id,
+            UUID projectId,
+            UUID environmentId,
+            String name,
+            SecretType type,
+            SecretStatus status,
+            List<SecretVersion> versions,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        return new Secret(
+                id,
+                projectId,
+                environmentId,
+                name,
+                type,
+                status,
+                versions,
+                createdAt,
+                updatedAt
+        );
+    }
+
+    public void addNewVersion(EncryptedSecretValue encryptedValue) {
+        ensureActive();
+
+        for (SecretVersion version : versions) {
+            version.markNotCurrent();
+        }
+
+        int nextVersionNumber = versions.stream()
+                .map(SecretVersion::versionNumber)
+                .max(Comparator.naturalOrder())
+                .orElse(0) + 1;
+
+        versions.add(
+                SecretVersion.create(
+                        nextVersionNumber,
+                        encryptedValue,
+                        true
+                )
+        );
+
+        this.updatedAt = Instant.now();
+    }
+
     public void disable() {
-        if (this.status == SecretStatus.DELETED) {
+        if (status == SecretStatus.DELETED) {
             throw new IllegalStateException("Deleted secret cannot be disabled");
         }
 
@@ -76,6 +132,29 @@ public final class Secret {
     public void delete() {
         this.status = SecretStatus.DELETED;
         this.updatedAt = Instant.now();
+    }
+
+    public void ensureReadable() {
+        if (status == SecretStatus.DELETED) {
+            throw new IllegalStateException("Deleted secret cannot be read");
+        }
+
+        if (status == SecretStatus.DISABLED) {
+            throw new IllegalStateException("Disabled secret cannot be read");
+        }
+    }
+
+    private void ensureActive() {
+        if (status != SecretStatus.ACTIVE) {
+            throw new IllegalStateException("Only active secret can be changed");
+        }
+    }
+
+    public SecretVersion currentVersion() {
+        return versions.stream()
+                .filter(SecretVersion::current)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Secret has no current version"));
     }
 
     private static String validateName(String name) {
@@ -116,13 +195,6 @@ public final class Secret {
 
     public List<SecretVersion> versions() {
         return List.copyOf(versions);
-    }
-
-    public SecretVersion currentVersion() {
-        return versions.stream()
-                .filter(SecretVersion::current)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Secret has no current version"));
     }
 
     public Instant createdAt() {

@@ -1,21 +1,22 @@
 package dev.capyvault.core.encryption.infrastructure.provider;
 
 import dev.capyvault.core.encryption.domain.EncryptionAlgorithm;
+import dev.capyvault.core.secret.application.port.out.EncryptedSecretPayload;
 import dev.capyvault.core.secret.application.port.out.SecretEncryptionPort;
-import dev.capyvault.core.secret.domain.EncryptedSecretValue;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
 
 @Component
 public class LocalSecretEncryptionAdapter implements SecretEncryptionPort {
 
-    private static final int GCM_TAG_LENGTH = 128;
+    private static final int GCM_TAG_LENGTH_BITS = 128;
     private static final int NONCE_LENGTH_BYTES = 12;
 
     private final String keyId;
@@ -27,32 +28,32 @@ public class LocalSecretEncryptionAdapter implements SecretEncryptionPort {
             @Value("${capyvault.encryption.secret-key}") String rawSecretKey
     ) {
         this.keyId = keyId;
-        this.secretKeySpec = new SecretKeySpec(validateKey(rawSecretKey), "AES");
+        this.secretKeySpec = new SecretKeySpec(
+                validateKey(rawSecretKey),
+                "AES"
+        );
     }
 
     @Override
-    public EncryptedSecretValue encrypt(String plaintext) {
+    public EncryptedSecretPayload encrypt(String plaintext) {
         try {
             byte[] nonce = new byte[NONCE_LENGTH_BYTES];
             secureRandom.nextBytes(nonce);
 
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
 
-            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(
-                    GCM_TAG_LENGTH,
-                    nonce
-            );
-
             cipher.init(
                     Cipher.ENCRYPT_MODE,
                     secretKeySpec,
-                    gcmParameterSpec
+                    new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce)
             );
 
-            byte[] encryptedBytes = cipher.doFinal(plaintext.getBytes());
+            byte[] ciphertext = cipher.doFinal(
+                    plaintext.getBytes(StandardCharsets.UTF_8)
+            );
 
-            return new EncryptedSecretValue(
-                    Base64.getEncoder().encodeToString(encryptedBytes),
+            return new EncryptedSecretPayload(
+                    Base64.getEncoder().encodeToString(ciphertext),
                     keyId,
                     EncryptionAlgorithm.AES_256_GCM.name(),
                     Base64.getEncoder().encodeToString(nonce)
@@ -63,34 +64,33 @@ public class LocalSecretEncryptionAdapter implements SecretEncryptionPort {
     }
 
     @Override
-    public String decrypt(EncryptedSecretValue encryptedValue) {
+    public String decrypt(EncryptedSecretPayload encryptedPayload) {
         try {
-            byte[] nonce = Base64.getDecoder().decode(encryptedValue.nonce());
-            byte[] ciphertext = Base64.getDecoder().decode(encryptedValue.ciphertext());
+            byte[] nonce = Base64.getDecoder().decode(encryptedPayload.nonce());
+            byte[] ciphertext = Base64.getDecoder().decode(encryptedPayload.ciphertext());
 
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-
-            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(
-                    GCM_TAG_LENGTH,
-                    nonce
-            );
 
             cipher.init(
                     Cipher.DECRYPT_MODE,
                     secretKeySpec,
-                    gcmParameterSpec
+                    new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce)
             );
 
-            byte[] plaintextBytes = cipher.doFinal(ciphertext);
+            byte[] plaintext = cipher.doFinal(ciphertext);
 
-            return new String(plaintextBytes);
+            return new String(plaintext, StandardCharsets.UTF_8);
         } catch (Exception exception) {
             throw new IllegalStateException("Failed to decrypt secret value", exception);
         }
     }
 
     private byte[] validateKey(String rawSecretKey) {
-        byte[] keyBytes = rawSecretKey.getBytes();
+        if (rawSecretKey == null || rawSecretKey.isBlank()) {
+            throw new IllegalArgumentException("Encryption secret key is required");
+        }
+
+        byte[] keyBytes = rawSecretKey.getBytes(StandardCharsets.UTF_8);
 
         if (keyBytes.length != 32) {
             throw new IllegalArgumentException(

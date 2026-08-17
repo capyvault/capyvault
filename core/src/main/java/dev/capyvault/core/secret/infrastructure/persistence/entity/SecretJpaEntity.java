@@ -12,7 +12,7 @@ import java.util.UUID;
         name = "secrets",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_secret_project_env_name",
+                        name = "uk_secret_project_environment_name",
                         columnNames = {"project_id", "environment_id", "name"}
                 )
         }

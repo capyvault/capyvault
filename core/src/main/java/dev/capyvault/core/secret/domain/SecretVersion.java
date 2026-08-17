@@ -1,5 +1,4 @@
 package dev.capyvault.core.secret.domain;
-
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -9,7 +8,7 @@ public final class SecretVersion {
     private final UUID id;
     private final int versionNumber;
     private final EncryptedSecretValue encryptedValue;
-    private final boolean current;
+    private boolean current;
     private final Instant createdAt;
 
     private SecretVersion(
@@ -20,7 +19,7 @@ public final class SecretVersion {
             Instant createdAt
     ) {
         if (versionNumber < 1) {
-            throw new IllegalArgumentException("Secret version number must be greater than zero");
+            throw new IllegalArgumentException("Version number must be greater than zero");
         }
 
         this.id = Objects.requireNonNull(id);
@@ -30,14 +29,42 @@ public final class SecretVersion {
         this.createdAt = Objects.requireNonNull(createdAt);
     }
 
-    public static SecretVersion firstVersion(EncryptedSecretValue encryptedValue) {
+    public static SecretVersion create(
+            int versionNumber,
+            EncryptedSecretValue encryptedValue,
+            boolean current
+    ) {
         return new SecretVersion(
                 UUID.randomUUID(),
-                1,
+                versionNumber,
                 encryptedValue,
-                true,
+                current,
                 Instant.now()
         );
+    }
+
+    public static SecretVersion restore(
+            UUID id,
+            int versionNumber,
+            EncryptedSecretValue encryptedValue,
+            boolean current,
+            Instant createdAt
+    ) {
+        return new SecretVersion(
+                id,
+                versionNumber,
+                encryptedValue,
+                current,
+                createdAt
+        );
+    }
+
+    public void markCurrent() {
+        this.current = true;
+    }
+
+    public void markNotCurrent() {
+        this.current = false;
     }
 
     public UUID id() {

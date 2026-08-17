@@ -1,5 +1,4 @@
 package dev.capyvault.core.secret.infrastructure.persistence.entity;
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,12 +9,12 @@ import java.util.UUID;
 @Entity
 @Table(name = "secret_versions")
 @Getter
+@Setter
 public class SecretVersionJpaEntity {
 
     @Id
     private UUID id;
 
-    @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "secret_id", nullable = false)
     private SecretJpaEntity secret;
@@ -26,13 +25,13 @@ public class SecretVersionJpaEntity {
     @Column(name = "ciphertext", nullable = false, columnDefinition = "TEXT")
     private String ciphertext;
 
-    @Column(name = "key_id", nullable = false)
+    @Column(name = "key_id", nullable = false, length = 100)
     private String keyId;
 
-    @Column(name = "algorithm", nullable = false)
+    @Column(nullable = false, length = 100)
     private String algorithm;
 
-    @Column(name = "nonce", nullable = false)
+    @Column(nullable = false, length = 255)
     private String nonce;
 
     @Column(name = "is_current", nullable = false)

@@ -1,0 +1,193 @@
+### =========================================================
+### CapyVault Vault Core Service - Full Secret Flow Scenario
+### Base URL
+### =========================================================
+
+@baseUrl = http://localhost:8083
+@projectId = 11111111-1111-1111-1111-111111111111
+@environmentId = 22222222-2222-2222-2222-222222222222
+
+
+### =========================================================
+### 1. Create secret
+### This creates secret version 1.
+### Plain value is encrypted before saving to database.
+### =========================================================
+
+# @name createSecret
+POST {{baseUrl}}/api/v1/secrets
+Content-Type: application/json
+
+{
+  "projectId": "{{projectId}}",
+  "environmentId": "{{environmentId}}",
+  "name": "DATABASE_PASSWORD",
+  "type": "PASSWORD",
+  "value": "my-first-password"
+}
+
+> {%
+    client.global.set("secretId", response.body.id);
+%}
+
+
+### =========================================================
+### 2. Get secret metadata
+### This returns metadata only.
+### It must not return plaintext secret value.
+### =========================================================
+
+GET {{baseUrl}}/api/v1/secrets/{{secretId}}
+
+
+### =========================================================
+### 3. Get current secret value
+### This reads current version and decrypts it.
+### Expected value: my-first-password
+### =========================================================
+
+GET {{baseUrl}}/api/v1/secrets/{{secretId}}/value
+
+
+### =========================================================
+### 4. Update secret value
+### This creates secret version 2.
+### Old version remains in secret_versions table.
+### Current version becomes version 2.
+### =========================================================
+
+PUT {{baseUrl}}/api/v1/secrets/{{secretId}}/value
+Content-Type: application/json
+
+{
+  "value": "my-second-password"
+}
+
+
+### =========================================================
+### 5. Get secret value again
+### Expected value: my-second-password
+### Expected current version: 2
+### =========================================================
+
+GET {{baseUrl}}/api/v1/secrets/{{secretId}}/value
+
+
+### =========================================================
+### 6. Create rotation policy
+### This enables rotation for the secret.
+### Strategy MANUAL_VALUE means we provide the new value manually.
+### =========================================================
+
+# @name createRotationPolicy
+POST {{baseUrl}}/api/v1/rotation-policies
+Content-Type: application/json
+
+{
+  "secretId": "{{secretId}}",
+  "intervalDays": 30,
+  "strategy": "MANUAL_VALUE"
+}
+
+> {%
+    client.global.set("rotationPolicyId", response.body.id);
+%}
+
+
+### =========================================================
+### 7. Execute manual rotation
+### This creates secret version 3.
+### Rotation module calls secret module through RotateSecretUseCase.
+### Rotation module must not call SecretRepository directly.
+### =========================================================
+
+POST {{baseUrl}}/api/v1/rotation-policies/secrets/{{secretId}}/execute?value=my-rotated-password
+
+
+### =========================================================
+### 8. Get secret value after rotation
+### Expected value: my-rotated-password
+### Expected current version: 3
+### =========================================================
+
+GET {{baseUrl}}/api/v1/secrets/{{secretId}}/value
+
+
+### =========================================================
+### 9. Create another secret for generated password rotation
+### =========================================================
+
+# @name createGeneratedSecret
+POST {{baseUrl}}/api/v1/secrets
+Content-Type: application/json
+
+{
+  "projectId": "{{projectId}}",
+  "environmentId": "{{environmentId}}",
+  "name": "REDIS_PASSWORD",
+  "type": "PASSWORD",
+  "value": "redis-first-password"
+}
+
+> {%
+    client.global.set("generatedSecretId", response.body.id);
+%}
+
+
+### =========================================================
+### 10. Create generated password rotation policy
+### GENERATED_PASSWORD means system generates new password automatically.
+### =========================================================
+
+POST {{baseUrl}}/api/v1/rotation-policies
+Content-Type: application/json
+
+{
+  "secretId": "{{generatedSecretId}}",
+  "intervalDays": 15,
+  "strategy": "GENERATED_PASSWORD"
+}
+
+
+### =========================================================
+### 11. Execute generated password rotation
+### No value parameter is needed.
+### System generates a new secret value.
+### =========================================================
+
+POST {{baseUrl}}/api/v1/rotation-policies/secrets/{{generatedSecretId}}/execute
+
+
+### =========================================================
+### 12. Read generated rotated secret value
+### The returned value should be a generated password.
+### =========================================================
+
+GET {{baseUrl}}/api/v1/secrets/{{generatedSecretId}}/value
+
+
+### =========================================================
+### 13. Delete first secret
+### This is soft delete.
+### Secret status becomes DELETED.
+### =========================================================
+
+DELETE {{baseUrl}}/api/v1/secrets/{{secretId}}
+
+
+### =========================================================
+### 14. Try to read deleted secret metadata
+### Depending on your handler, this may still return metadata
+### or you can block deleted secrets.
+### =========================================================
+
+GET {{baseUrl}}/api/v1/secrets/{{secretId}}
+
+
+### =========================================================
+### 15. Try to read deleted secret value
+### Expected: error
+### Deleted secret cannot be read.
+### =========================================================
+
+GET {{baseUrl}}/api/v1/secrets/{{secretId}}/value

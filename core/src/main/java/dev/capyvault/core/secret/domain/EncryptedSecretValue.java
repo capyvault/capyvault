@@ -1,5 +1,7 @@
 package dev.capyvault.core.secret.domain;
 
+import dev.capyvault.core.secret.application.port.out.EncryptedSecretPayload;
+
 import java.util.Objects;
 
 public final class EncryptedSecretValue {
@@ -15,10 +17,28 @@ public final class EncryptedSecretValue {
             String algorithm,
             String nonce
     ) {
-        this.ciphertext = Objects.requireNonNull(ciphertext);
-        this.keyId = Objects.requireNonNull(keyId);
-        this.algorithm = Objects.requireNonNull(algorithm);
-        this.nonce = Objects.requireNonNull(nonce);
+        this.ciphertext = Objects.requireNonNull(ciphertext, "ciphertext is required");
+        this.keyId = Objects.requireNonNull(keyId, "keyId is required");
+        this.algorithm = Objects.requireNonNull(algorithm, "algorithm is required");
+        this.nonce = Objects.requireNonNull(nonce, "nonce is required");
+    }
+
+    public static EncryptedSecretValue from(EncryptedSecretPayload payload) {
+        return new EncryptedSecretValue(
+                payload.ciphertext(),
+                payload.keyId(),
+                payload.algorithm(),
+                payload.nonce()
+        );
+    }
+
+    public EncryptedSecretPayload toPayload() {
+        return new EncryptedSecretPayload(
+                ciphertext,
+                keyId,
+                algorithm,
+                nonce
+        );
     }
 
     public String ciphertext() {
